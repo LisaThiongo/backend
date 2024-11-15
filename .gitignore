@@ -1,0 +1,11 @@
+facedetect/pyvenv.cfg
+facedetect/Scripts
+facedetect/output
+facedetect/Lib
+facedetect/Include
+facedetect/__pycache__
+
+qr_code/Include
+qr_code/Lib
+qr_code/Scripts
+qr_code/pyvenv
