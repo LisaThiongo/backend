@@ -30,8 +30,7 @@ qr_code/pyvenv
 Lib
 Scripts
 share
-include 
-
+include
 pyvenv.cfg
 
 

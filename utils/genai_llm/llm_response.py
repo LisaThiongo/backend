@@ -33,7 +33,7 @@ model = genai.GenerativeModel(
 )
 
 THREAT_PROMPT = """
-Analyze this image and provide a security assessment. Return a JSON object with this exact structure:
+Analyze this image and provide a security assessment. Return a JSON object with this exact structure: if the description is of sexually explicit content, violence or human injury, set nsfw_content to true
 {
     "threat_level": "HIGH/MODERATE/LOW",
     "reasons": [give the reasons for the threat_level in a paragraph form in readble markdown format bolding needed words for attractive readable format],

@@ -30,6 +30,36 @@ app.add_middleware(
     allow_headers=["*"],        
 )
 
+def check_nsfw_from_llm(llm_result: dict) -> bool:
+    """
+    Determine if content is NSFW based on LLM response.
+    """
+    if not llm_result or not isinstance(llm_result, dict):
+        return False
+
+    # Get the reasons text and threat level
+    reasons = ' '.join(llm_result.get('reasons', [])).lower()
+    threat_level = llm_result.get('threat_level', '').upper()
+    threat_score = llm_result.get('threat_score', 0)
+
+    # Keywords that indicate NSFW content
+    nsfw_keywords = [
+        'sexually suggestive',
+        'explicit',
+        'inappropriate',
+        'suggestive content',
+        'adult content',
+        'nudity',
+        'sexual',
+        'violence',
+        'injury',
+        'harm'
+    ]
+
+    # Check if any NSFW keywords are present and threat level is HIGH
+    has_nsfw_keywords = any(keyword in reasons for keyword in nsfw_keywords)
+    return has_nsfw_keywords and threat_level == 'HIGH' and threat_score >= 90
+
 @app.post("/api")
 async def process_image(file: UploadFile = File(...)):
     try:
@@ -43,20 +73,24 @@ async def process_image(file: UploadFile = File(...)):
             qr_checker.process_qr_scan(image),
             read_data.extract_sensitive_metadata(image),
             face_detection.process_image(image),
-            # nsfw_detect.read_nsfw(image),
+            nsfw_detect.read_nsfw(image),
             llm_response.llm_process(image)
         ]
-        detected_objects, qr_details, metadata_details, face_details, llm_result = await asyncio.gather(*tasks)
+        detected_objects, qr_details, metadata_details, face_details, _, llm_result = await asyncio.gather(*tasks)
         
         # nsfw_info
-        
-        detected_objects.append(face_details)
+
+        if face_details:
+            detected_objects = detected_objects or []
+            detected_objects.append(face_details)        
        
+        nsfw_status = check_nsfw_from_llm(llm_result)
+
         return {
             "detected_objects": detected_objects,                               
             "qr_details": qr_details,
             "metadata_details": metadata_details,
-            # "nsfw_detection" : nsfw_info,
+            "nsfw_detection" : nsfw_status,
             "llm_response": llm_result
         }
 
