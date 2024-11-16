@@ -1,11 +1,10 @@
 from ultralytics import YOLO
-from fastapi import FastAPI
 from PIL import Image
 
-app = FastAPI()
 
+model_path = "H:/Trai/backend/utils/ObjectModel/best.pt"
 # Load the pre-trained YOLO model
-model = YOLO("/home/sannux/Desktop/downOdi/runs/detect/train8/weights/best.pt")
+model = YOLO(model_path)
 
 async def run_detection(image: Image):
     # Perform object detection on the input image

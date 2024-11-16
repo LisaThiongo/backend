@@ -6,6 +6,7 @@ from utils.ObjectModel import detect
 from utils.faceDetect import face_detection
 from utils.metadata import read_data
 from utils.qr_code import qr_checker
+from utils.genai_llm import llm_response
 from config import config
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -40,9 +41,10 @@ async def process_image(file: UploadFile = File(...)):
             detect.run_detection(image),
             qr_checker.process_qr_scan(image),
             read_data.extract_sensitive_metadata(image),
-            face_detection.process_image(image)
+            face_detection.process_image(image),
+            llm_response.llm_process(image)
         ]
-        detected_objects, qr_details, metadata_details, face_details = await asyncio.gather(*tasks)
+        detected_objects, qr_details, metadata_details, face_details, llm_result = await asyncio.gather(*tasks)
         
         detected_objects.append(face_details)
        
@@ -50,6 +52,7 @@ async def process_image(file: UploadFile = File(...)):
             "detected_objects": detected_objects,                               
             "qr_details": qr_details,
             "metadata_details": metadata_details,
+            "llm_response": llm_result,
             
         }
 
