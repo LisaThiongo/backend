@@ -5,139 +5,198 @@ import re
 import google.generativeai as genai
 from config import config
 import aiofiles
+import logging
+import asyncio
+from typing import Dict, Optional, Any
+from concurrent.futures import ThreadPoolExecutor
+import io
 
+# Logging Configuration
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Constants and Configuration
+TIMEOUT_SECONDS = 60
+
+# Model Configuration
 genai.configure(api_key=config.GOOGLE_API_KEY)
-
-# Initialize the model
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
+    model_name='gemini-1.5-pro',
     generation_config={
         'temperature': 0.1,
+        'max_output_tokens': 2048,
+        'top_p': 0.8,
     }
 )
 
-async def clean_json_text(text):
+THREAT_PROMPT = """
+Analyze this image and provide a security assessment. Return a JSON object with this exact structure:
+{
+    "threat_level": "HIGH/MODERATE/LOW",
+    "reasons": [give the reasons for the threat_level in a paragraph form in readble markdown format bolding needed words for attractive readable format],
+    "detected_elements": {
+        "location_indicators": false,
+        "weapons": {
+            "guns": false,
+            "knives": false
+        },
+        "sensitive_documents": {
+            "credit_cards": false,
+            "id_cards": false,
+            "car_plates": false,
+            "house_numbers": false
+        },
+        "substances": {
+            "alcohol": false,
+            "drugs": false,
+            "cigarettes": false
+        },
+        "personal_identifiers": {
+            "faces": false,
+            "names": false
+        },
+        "nsfw_content": false
+    }
+}
+"""
+
+async def clean_json_text(text: str) -> Optional[str]:
+    """Clean and format JSON text."""
     try:
-        # Find JSON-like content between curly braces
-        start = text.find('{')
-        end = text.rfind('}')
-        if start == -1 or end == -1:
+        logger.debug(f"Cleaning JSON text")
+        
+        # Find JSON content between outermost curly braces
+        json_start = text.find('{')
+        json_end = text.rfind('}')
+        
+        if json_start == -1 or json_end == -1:
+            logger.error("No JSON object found in text")
             return None
         
-        json_text = text[start:end + 1]
+        json_text = text[json_start:json_end + 1]
         
-        # Convert paragraph-style text in arrays to proper JSON format
-        def fix_array_text(match):
-            content = match.group(1)
-            # Split by newlines and create proper JSON array
-            items = [item.strip() for item in content.split('\\n') if item.strip()]
-            # Escape quotes and join with commas
-            formatted_items = ['"{}"'.format(item.replace('"', '\\"')) for item in items]
-            return '[' + ','.join(formatted_items) + ']'
+        # Basic cleanup
+        json_text = json_text.replace('\n', ' ').strip()
         
-        # Fix arrays containing newline-separated text
-        json_text = re.sub(r'\[\s*"([^"]+)"\s*\]', fix_array_text, json_text)
-        
-        # Clean up any remaining issues
-        json_text = json_text.replace('\n', ' ')
-        json_text = json_text.strip()
-        
-        return json_text
-        
+        # Validate JSON
+        try:
+            json.loads(json_text)
+            return json_text
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON after cleaning: {str(e)}")
+            return None
+            
     except Exception as e:
-        print(f"Error cleaning JSON text: {str(e)}")
-        print("Problematic JSON text:")
-        print(json_text)
+        logger.error(f"Error in clean_json_text: {str(e)}")
         return None
 
-async def calculate_threat_score(detected_elements):
-    """Calculate a threat score based on the detected elements."""
-    score = 0
-
-    # Scoring based on the specified criteria
-    if detected_elements.get("nsfw_content", False) or detected_elements.get("weapons", {}).get("guns", False):
-        return 95  # NSFW content or guns detected
-
-    if any(detected_elements.get("sensitive_documents", {}).values()):
-        return 90  # Sensitive documents detected
-
-    if any(detected_elements.get("substances", {}).values()):
-        return 85  # Substances like alcohol, drugs, or cigarettes detected
-
-    if detected_elements.get("personal_identifiers", {}).get("faces", False):
-        return 75  # Faces detected
-
-    if detected_elements.get("location_indicators", False) or detected_elements.get("weapons", {}).get("knives", False):
-        return 70  # Location indicators or knives detected
-
-    return score
-
-async def analyze_image(image: Image):
-    # Prompt for threat analysis
-    threat_prompt = """
-    Analyze the image for security threats. Return a JSON object containing only these fields:
-    {
-        "threat_level": "HIGH/MODERATE/LOW",
-        "reasons": ["reasons in paragraph form, in a readable format in bullet points seperated by new line"],
-        "detected_elements": {
-            "location_indicators": false,
-            "weapons": {"guns": false, "knives": false},
-            "sensitive_documents": {"credit_cards": false, "id_cards": false, "car_plates": true, "house_numbers": false},
-            "substances": {"alcohol": false, "drugs": false, "cigarettes": true},
-            "personal_identifiers": {"faces": true, "names": false},
-            "nsfw_content": false
-        },
-        "high_risk_elements": ["element1"],
-        "moderate_risk_elements": ["element1"],
-        "recommendations": ["rec1", "rec2"]
-    }
-    """
-    
+async def analyze_image(image: Image.Image) -> Optional[Dict[str, Any]]:
+    """Analyze image with enhanced error handling."""
     try:
-        # Generate threat analysis
-        threat_response = model.generate_content([threat_prompt, image])
+        logger.info("Starting image analysis")
         
-        # Extract content from the model response
+        # Convert image to bytes if needed
+        if isinstance(image, Image.Image):
+            with io.BytesIO() as bio:
+                image.save(bio, format='PNG')
+                image_bytes = bio.getvalue()
+        
+        # Generate content
+        logger.debug("Calling Gemini API")
+        threat_response = await asyncio.to_thread(
+            model.generate_content, [THREAT_PROMPT, image]
+        )
+        
+        if not threat_response or not threat_response.candidates:
+            logger.error("No response from Gemini API")
+            return None
+            
+        # Extract text
         threat_text = threat_response.candidates[0].content.parts[0].text
+        logger.debug(f"Received response from API")
         
+        # Clean JSON
         cleaned_json = await clean_json_text(threat_text)
-        print("after cleaning json ##################")
-        print(cleaned_json)
         if not cleaned_json:
-            raise ValueError("Failed to clean JSON text")
+            logger.error("Failed to clean JSON response")
+            return None
+            
+        # Parse JSON
+        try:
+            data = json.loads(cleaned_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON: {str(e)}")
+            return None
+            
+        # Calculate threat score
+        if "detected_elements" in data:
+            score = await calculate_threat_score(data["detected_elements"])
+            data["threat_score"] = score
+            
+            # Update threat level
+            if score >= 90:
+                data["threat_level"] = "HIGH"
+            elif score >= 70:
+                data["threat_level"] = "MODERATE"
+            else:
+                data["threat_level"] = "LOW"
         
-        # Parse the cleaned JSON
-        data = json.loads(cleaned_json)
-        print("after parsing cleaned")
-
-        # Calculate and add threat score
-        detected_elements = data.get("detected_elements", {})
-        score = await calculate_threat_score(detected_elements)
-        
-        # Add the score to the response data
-        data["threat_score"] = score
-        
-        # Update threat level based on score if not already set
-        if score >= 90:
-            data["threat_level"] = "HIGH"
-        elif score >= 70:
-            data["threat_level"] = "MODERATE"
-        else:
-            data["threat_level"] = "LOW"
-    
         return data
-    
+        
     except Exception as e:
-        print(f"Error processing threat analysis: {e}")
-        if 'threat_text' in locals():
-            print("\nRaw response text:")
-            print(threat_text)
+        logger.error(f"Error in analyze_image: {str(e)}")
+        logger.error(f"Error traceback:", exc_info=True)
         return None
 
-async def llm_process(image: Image):
-    llm_response = await analyze_image(image)
-    return { 
-        key: llm_response.get(key) for key in [
-            "threat_level", "reasons", "threat_score"
-        ]
-    } if llm_response else None
+async def calculate_threat_score(detected_elements: Dict) -> int:
+    """Calculate threat score."""
+    try:
+        score = 0
+        
+        if detected_elements.get("nsfw_content"):
+            score = max(score, 95)
+        if detected_elements.get("weapons", {}).get("guns"):
+            score = max(score, 95)
+        if any(detected_elements.get("sensitive_documents", {}).values()):
+            score = max(score, 90)
+        if any(detected_elements.get("substances", {}).values()):
+            score = max(score, 85)
+        if detected_elements.get("personal_identifiers", {}).get("faces"):
+            score = max(score, 75)
+        if detected_elements.get("location_indicators"):
+            score = max(score, 70)
+        if detected_elements.get("weapons", {}).get("knives"):
+            score = max(score, 70)
+            
+        return score
+        
+    except Exception as e:
+        logger.error(f"Error calculating threat score: {str(e)}")
+        return 0
+
+async def llm_process(image: Image.Image) -> Optional[Dict]:
+    """Process image with LLM."""
+    try:
+        logger.info("Starting LLM process")
+        
+        llm_response = await analyze_image(image)
+        if not llm_response:
+            logger.error("No response from analyze_image")
+            return None
+            
+        # Extract required fields
+        result = {
+            key: llm_response.get(key)
+            for key in ["threat_level", "reasons", "threat_score"]
+        }
+        
+        logger.info("Successfully processed image")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in LLM process: {str(e)}")
+        logger.error(f"Error traceback:", exc_info=True)
+        return None
