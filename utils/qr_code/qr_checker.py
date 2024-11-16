@@ -167,10 +167,10 @@ async def analyze_content(content):
     
     return {
         "content": content,
-        "risk_level": risk_level,
-        "risks": risks,
+        # "risk_level": risk_level,
+        # "risks": risks,
         "is_malicious": risk_level == "HIGH",
-        "recommendation": "BLOCK" if risk_level == "HIGH" else "WARN" if risk_level == "MEDIUM" else "ALLOW"
+        # "recommendation": "BLOCK" if risk_level == "HIGH" else "WARN" if risk_level == "MEDIUM" else "ALLOW"
     }
 
 async def analyze_redirect_chain(redirect_chain):

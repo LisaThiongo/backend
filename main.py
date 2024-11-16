@@ -50,6 +50,7 @@ async def process_image(file: UploadFile = File(...)):
         
         # nsfw_info
         
+        
         detected_objects.append(face_details)
        
         return {
@@ -62,6 +63,55 @@ async def process_image(file: UploadFile = File(...)):
 
     except Exception as e:
         return {"error": str(e)}
+    
+@app.post("/extension")
+async def process_image(file: UploadFile = File(...)):
+    try:
+        # Read the uploaded image
+        image_bytes = await file.read()
+        image = Image.open(io.BytesIO(image_bytes))
+
+        # Process tasks concurrently
+        tasks = [
+            detect.run_detection(image),
+            qr_checker.process_qr_scan(image),
+        ]
+        detection_result, qr_details = await asyncio.gather(*tasks)
+        print(detection_result)
+        # Extract the detected objects list
+        detected_objects = []
+        detected_objects = [val["object"] for val in detection_result]
+        # detection_result["detected_objects"]
+        
+        
+        
+        print(detected_objects)
+        
+        # Get list of detected object names
+        # detected_object_names = [obj["object"] for obj in detected_objects]
+
+        # Initialize vulnerability level
+        vul = "Low"
+
+        # Check for moderate vulnerabilities
+        moderate_items = ["Car Plate Number", "Knife"]
+        if any(item in detected_objects for item in moderate_items):
+            vul = "Moderate"
+
+        # Check for high vulnerabilities
+        high_risk_items = ["Id Card", "Credit Card", "House Number Plate"]
+        if any(item in detected_objects for item in high_risk_items):
+            vul = "High"
+
+        # Check for malicious QR
+        if qr_details.get("is_malicious", False):
+            vul = "High"
+
+        return {"Vulnerable": vul}
+    except Exception as e:
+        return {"error": f"Processing error: {str(e)}"}
+
+    
 
 if __name__ == "__main__":
     import uvicorn
