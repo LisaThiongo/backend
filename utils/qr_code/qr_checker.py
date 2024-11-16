@@ -38,8 +38,34 @@ safe_domains = {
     'microsoft.com',
     'apple.com',
     'amazon.com',
-    'github.com'
+    'github.com',
+    'facebook.com',
+    'instagram.com',
+    'twitter.com',
+    'linkedin.com',
+    'pinterest.com',
+    'reddit.com',
+    'tiktok.com',
+    'snapchat.com',
+    'youtube.com',
+    'whatsapp.com',
+    'bbc.com',
+    'cnn.com',
+    'nytimes.com',
+    'theguardian.com',
+    'reuters.com',
+    'bloomberg.com',
+    'aljazeera.com',
+    'forbes.com',
+    'npr.org',
+    'washingtonpost.com',
+    'wikipedia.org',
+    'netflix.com',
+    'spotify.com',
+    'stackoverflow.com',
+    'dropbox.com'
 }
+
 
 # Request headers to mimic a real browser
 headers = {
@@ -165,13 +191,20 @@ async def analyze_content(content):
         risks.append(f"Error analyzing URL: {str(e)}")
         risk_level = "UNKNOWN"
     
-    return {
-        "content": content,
-        "risk_level": risk_level,
-        "risks": risks,
-        "is_malicious": risk_level == "HIGH",
-        "recommendation": "BLOCK" if risk_level == "HIGH" else "WARN" if risk_level == "MEDIUM" else "ALLOW"
-    }
+
+    result = [
+        f"- Content of QR: {content}",
+        f"- Risk Level: {risk_level}",
+        f"- Is Malicious: {'Yes' if risk_level == 'HIGH' else 'No'}",
+        f"- Recommendation: {'BLOCK' if risk_level == 'HIGH' else 'WARN' if risk_level == 'MEDIUM' else 'ALLOW'}",
+    ]
+
+    if risks:
+        result.append("- Risks Detected:")
+        for risk in risks:
+            result.append(f"  - {risk}")
+
+    return "\n".join(result)
 
 async def analyze_redirect_chain(redirect_chain):
     """Analyze the redirect chain for suspicious patterns"""
