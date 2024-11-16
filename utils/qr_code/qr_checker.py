@@ -191,20 +191,13 @@ async def analyze_content(content):
         risks.append(f"Error analyzing URL: {str(e)}")
         risk_level = "UNKNOWN"
     
-
-    result = [
-        f"- Content of QR: {content}",
-        f"- Risk Level: {risk_level}",
-        f"- Is Malicious: {'Yes' if risk_level == 'HIGH' else 'No'}",
-        f"- Recommendation: {'BLOCK' if risk_level == 'HIGH' else 'WARN' if risk_level == 'MEDIUM' else 'ALLOW'}",
-    ]
-
-    if risks:
-        result.append("- Risks Detected:")
-        for risk in risks:
-            result.append(f"  - {risk}")
-
-    return "\n".join(result)
+    return {
+        "content": content,
+        # "risk_level": risk_level,
+        # "risks": risks,
+        "is_malicious": risk_level == "HIGH",
+        # "recommendation": "BLOCK" if risk_level == "HIGH" else "WARN" if risk_level == "MEDIUM" else "ALLOW"
+    }
 
 async def analyze_redirect_chain(redirect_chain):
     """Analyze the redirect chain for suspicious patterns"""
