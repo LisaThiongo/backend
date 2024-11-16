@@ -7,6 +7,7 @@ from utils.faceDetect import face_detection
 from utils.metadata import read_data
 from utils.qr_code import qr_checker
 from utils.nsfw import nsfw_detect
+from utils.genai_llm import llm_response
 from config import config
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -42,9 +43,12 @@ async def process_image(file: UploadFile = File(...)):
             qr_checker.process_qr_scan(image),
             read_data.extract_sensitive_metadata(image),
             face_detection.process_image(image),
-            nsfw_detect.read_nsfw(image)
+            # nsfw_detect.read_nsfw(image),
+            llm_response.llm_process(image)
         ]
-        detected_objects, qr_details, metadata_details, face_details, nsfw_info = await asyncio.gather(*tasks)
+        detected_objects, qr_details, metadata_details, face_details, llm_result = await asyncio.gather(*tasks)
+        
+        # nsfw_info
         
         detected_objects.append(face_details)
        
@@ -52,8 +56,8 @@ async def process_image(file: UploadFile = File(...)):
             "detected_objects": detected_objects,                               
             "qr_details": qr_details,
             "metadata_details": metadata_details,
-            "nsfw_detection" : nsfw_info,
-            
+            # "nsfw_detection" : nsfw_info,
+            "llm_response": llm_result
         }
 
     except Exception as e:

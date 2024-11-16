@@ -213,13 +213,10 @@ async def check_qr_safety(image: Image):
 async def process_qr_scan(image: Image):
     result = await check_qr_safety(image)
     
-    if "error" in result:
-        print(f"Error: {result['error']}")
+    if result:
+        return result
     else:
-        print(f"Content: {result['content']}")
-        print(f"Risk Level: {result['risk_level']}")
-        print(f"Risks Found: {result['risks']}")
-        print(f"Recommendation: {result['recommendation']}")
+        return None
 
 # Run with an event loop
 # Example: asyncio.run(process_qr_scan(Image.open("path/to/qr/image.png")))
