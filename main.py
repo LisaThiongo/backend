@@ -64,7 +64,7 @@ def check_nsfw_from_llm(llm_result: dict) -> bool:
 
     # Check if any NSFW keywords are present and threat level is HIGH
     has_nsfw_keywords = any(keyword in reasons for keyword in nsfw_keywords)
-    return has_nsfw_keywords and threat_level == 'HIGH' and threat_score >= 90
+    return has_nsfw_keywords and threat_level == 'HIGH' 
 
 @app.post("/api")
 async def process_image(file: UploadFile = File(...)):
@@ -85,6 +85,7 @@ async def process_image(file: UploadFile = File(...)):
         detected_objects, qr_details, metadata_details, face_details, _, llm_result = await asyncio.gather(*tasks)
         
         # nsfw_info
+        
 
         if face_details:
             detected_objects = detected_objects or []
@@ -124,7 +125,7 @@ async def process_image(file: UploadFile = File(...)):
         
         
         
-        print(detected_objects)
+        # print(detected_objects)
         
         # Get list of detected object names
         # detected_object_names = [obj["object"] for obj in detected_objects]
@@ -145,6 +146,7 @@ async def process_image(file: UploadFile = File(...)):
         # Check for malicious QR
         if qr_details.get("is_malicious", False):
             vul = "High"
+        
 
         return {"Vulnerable": vul}
     except Exception as e:

@@ -23,7 +23,7 @@ Analyze this image and provide a security assessment. Return a JSON object with 
 if the image is of a crime scene or shows a deceased individual, set the value of nsfw_content to true and do the same for any other images that you feel are NSFW.
 {
     "threat_level": "HIGH/MODERATE/LOW",
-    "reasons": [give the reasons for the threat_level in a paragraph form in readble markdown format bolding needed words for attractive readable format],
+    "reasons": [Provide a markdown-formatted paragraph explaining the reasons for the threat level. Use **bold** to emphasize important points and ensure clarity and readability for the assessment.],
     "detected_elements": {
         "location_indicators": false,
         "weapons": {
