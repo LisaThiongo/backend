@@ -2,7 +2,7 @@ from ultralytics import YOLO
 from PIL import Image
 
 
-model_path = "H:/Trai/backend/utils/ObjectModel/best.pt"
+model_path = "utils/ObjectModel/best.pt/home/sannux/backend/utils/ObjectModel/best.pt"
 # Load the pre-trained YOLO model
 model = YOLO(model_path)
 
