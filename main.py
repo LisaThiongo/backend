@@ -53,7 +53,13 @@ def check_nsfw_from_llm(llm_result: dict) -> bool:
         'sexual',
         'violence',
         'injury',
-        'harm'
+        'harm',
+        'deceased',
+        'blood',
+        'death',
+        'killed',
+        'gunshot',
+        
     ]
 
     # Check if any NSFW keywords are present and threat level is HIGH
