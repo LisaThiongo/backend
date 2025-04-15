@@ -2,6 +2,10 @@ from fastapi import FastAPI, File, UploadFile
 from PIL import Image
 import io
 import asyncio
+
+//Import OpenAI
+import openai
+
 from utils.ObjectModel import detect
 from utils.faceDetect import face_detection
 from utils.metadata import read_data
@@ -11,8 +15,32 @@ from utils.genai_llm import llm_response
 from config import config
 from fastapi.middleware.cors import CORSMiddleware
 
+//import Key 
+open.api_key = os.getenv("OPENAI_API_KEY")
 app = FastAPI()
 
+
+//Add the LLM API Route
+
+# Load your OpenAI API key securely (store in an env variable or config)
+openai.api_key = "your_openai_api_key_here"
+
+@app.post("/llm")
+async def llm_endpoint(prompt: str):
+    """
+    Sends user input to OpenAI's LLM (GPT-4) and returns the response.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[{"role": "system", "content": "You are an AI assistant."},
+                      {"role": "user", "content": prompt}]
+        )
+        return {"llm_response": response["choices"][0]["message"]["content"]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+		
+		
 # CORS configuration
 origins = [
     "http://localhost:3000",      
