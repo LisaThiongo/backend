@@ -159,7 +159,13 @@ if __name__ == "__main__":
     # Increase worker count for concurrency
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
 
+from fastapi import FastAPI
 
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "API is Working!"}
 
 
 
