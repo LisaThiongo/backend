@@ -78,7 +78,7 @@ def check_nsfw_from_llm(llm_result: dict) -> bool:
 
 #Add the LLM API Route
 
-# Load your OpenAI API key securely (store in an env variable or config)
+# Load OpenAI API key (store in an env variable or config)
 openai.api_key = "your_openai_api_key_here"
 
 @app.post("/llm")
