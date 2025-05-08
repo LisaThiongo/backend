@@ -17,7 +17,7 @@ from config import config
 from fastapi.middleware.cors import CORSMiddleware
 
 #import Key 
-open.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 app = FastAPI()
 
 		
